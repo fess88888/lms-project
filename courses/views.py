@@ -4,31 +4,48 @@ from .serializers import CourseSerializer, LessonSerializer
 from .permissions import ModeratorReadOnlyForCreationAndDeletion
 
 
-# Курс: ViewSet полный CRUD (list, create, retrieve, update, partial_update, destroy)
 class CourseViewSet(viewsets.ModelViewSet):
-    queryset = Course.objects.all()
     serializer_class = CourseSerializer
     permission_classes = [ModeratorReadOnlyForCreationAndDeletion]
 
+    def get_queryset(self):
+        # Возвращаем только курсы владельца ИЛИ все, если пользователь модератор
+        user = self.request.user
+        if not user.is_authenticated:
+            return Course.objects.none()
+        if user.groups.filter(name='moderators').exists():
+            return Course.objects.all()
+        return Course.objects.filter(owner=user)
 
-# Урок: Generic-классы полный CRUD
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
+
+
 class LessonListCreateView(generics.ListCreateAPIView):
-    """
-    GET /api/lessons/ список всех уроков
-    POST /api/lessons/ создать урок
-    """
-    queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
     permission_classes = [ModeratorReadOnlyForCreationAndDeletion]
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user.is_authenticated:
+            return Lesson.objects.none()
+        if user.groups.filter(name='moderators').exists():
+            return Lesson.objects.all()
+        return Lesson.objects.filter(owner=user)
+
+    def perform_create(self, serializer):
+        serializer.save(owner=self.request.user)
 
 
 class LessonDetailView(generics.RetrieveUpdateDestroyAPIView):
-    """
-    GET /api/lessons/{id}/ один урок
-    PUT /api/lessons/{id}/ полное обновление
-    PATCH /api/lessons/{id}/ частичное обновление
-    DELETE /api/lessons/{id}/ удалить урок
-    """
-    queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
     permission_classes = [ModeratorReadOnlyForCreationAndDeletion]
+
+    def get_queryset(self):
+        user = self.request.user
+        if not user.is_authenticated:
+            return Lesson.objects.none()
+        if user.groups.filter(name='moderators').exists():
+            return Lesson.objects.all()
+        return Lesson.objects.filter(owner=user)
+

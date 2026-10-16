@@ -1,11 +1,17 @@
 from django.db import models
+from django.conf import settings
 
 
 class Course(models.Model):
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='courses',
+        verbose_name='владелец'
+    )
     title = models.CharField('название', max_length=200)
     preview = models.ImageField('превью', upload_to='course_previews/', blank=True, null=True)
     description = models.TextField('описание', blank=True)
-
     created_at = models.DateTimeField('создан', auto_now_add=True)
     updated_at = models.DateTimeField('обновлён', auto_now=True)
 
@@ -18,6 +24,12 @@ class Course(models.Model):
 
 
 class Lesson(models.Model):
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='lessons',
+        verbose_name='владелец'
+    )
     course = models.ForeignKey(
         Course,
         on_delete=models.CASCADE,
@@ -28,7 +40,6 @@ class Lesson(models.Model):
     description = models.TextField('описание', blank=True)
     preview = models.ImageField('превью', upload_to='lesson_previews/', blank=True, null=True)
     video_url = models.URLField('ссылка на видео', max_length=500, blank=True)
-
     created_at = models.DateTimeField('создан', auto_now_add=True)
     updated_at = models.DateTimeField('обновлён', auto_now=True)
 
