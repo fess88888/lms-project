@@ -1,8 +1,10 @@
 from django.core.management.base import BaseCommand
+from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
-from users.models import User
 from courses.models import Course, Lesson
 from users.models import Payment
+
+User = get_user_model()
 
 class Command(BaseCommand):
     help = 'Создаёт тестовые данные для LMS: пользователи, курсы, уроки, платежи'
@@ -10,7 +12,18 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         self.stdout.write('Создание тестовых данных...')
 
-        # Пользователи
+        # Преподаватель (владелец курса и уроков)
+        teacher, _ = User.objects.get_or_create(
+            email='teacher1@example.com',
+            defaults={
+                'password': make_password('password123'),
+                'phone': '+79990000010',
+                'city': 'Казань',
+                'is_active': True,
+            }
+        )
+
+        # Студенты
         user1, _ = User.objects.get_or_create(
             email='student1@example.com',
             defaults={
@@ -30,21 +43,24 @@ class Command(BaseCommand):
             }
         )
 
-        # Курс
+        # Курс — с owner
         course, _ = Course.objects.get_or_create(
             title='Django для начинающих',
+            owner=teacher,
             defaults={'description': 'Полный курс по Django и DRF'}
         )
 
-        # Уроки
+        # Уроки — теперь тоже с owner
         lesson1, _ = Lesson.objects.get_or_create(
             course=course,
             title='Введение и установка',
+            owner=teacher,  # <-- обязательно
             defaults={'description': 'Как установить Django', 'video_url': 'https://youtube.com/video1'}
         )
         lesson2, _ = Lesson.objects.get_or_create(
             course=course,
             title='Модели и миграции',
+            owner=teacher,  # <-- обязательно
             defaults={'description': 'ORM и миграции', 'video_url': 'https://youtube.com/video2'}
         )
 
