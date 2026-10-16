@@ -1,12 +1,14 @@
 from rest_framework import viewsets, generics
 from .models import Course, Lesson
 from .serializers import CourseSerializer, LessonSerializer
+from .permissions import ModeratorReadOnlyForCreationAndDeletion
 
 
 # Курс: ViewSet полный CRUD (list, create, retrieve, update, partial_update, destroy)
 class CourseViewSet(viewsets.ModelViewSet):
     queryset = Course.objects.all()
     serializer_class = CourseSerializer
+    permission_classes = [ModeratorReadOnlyForCreationAndDeletion]
 
 
 # Урок: Generic-классы полный CRUD
@@ -17,6 +19,7 @@ class LessonListCreateView(generics.ListCreateAPIView):
     """
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
+    permission_classes = [ModeratorReadOnlyForCreationAndDeletion]
 
 
 class LessonDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -28,4 +31,4 @@ class LessonDetailView(generics.RetrieveUpdateDestroyAPIView):
     """
     queryset = Lesson.objects.all()
     serializer_class = LessonSerializer
-
+    permission_classes = [ModeratorReadOnlyForCreationAndDeletion]
