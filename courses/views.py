@@ -1,19 +1,23 @@
 from rest_framework.views import APIView
+from rest_framework import viewsets, generics, status
 from rest_framework.response import Response
-from rest_framework import status
-from rest_framework import viewsets, generics
-from .models import Course, Lesson, Subscription
-from .serializers import CourseSerializer, LessonSerializer
-from .permissions import ModeratorReadOnlyForCreationAndDeletion
 from django.shortcuts import get_object_or_404
+from .models import Course, Lesson, Subscription
+from .serializers import CourseListSerializer, CourseDetailSerializer, LessonSerializer
+from .paginators import StandardResultsSetPagination
+from .permissions import ModeratorReadOnlyForCreationAndDeletion
 
 
 class CourseViewSet(viewsets.ModelViewSet):
-    serializer_class = CourseSerializer
+    pagination_class = StandardResultsSetPagination  # <-- пагинация здесь
     permission_classes = [ModeratorReadOnlyForCreationAndDeletion]
 
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return CourseListSerializer
+        return CourseDetailSerializer
+
     def get_queryset(self):
-        # Возвращаем только курсы владельца ИЛИ все, если пользователь модератор
         user = self.request.user
         if not user.is_authenticated:
             return Course.objects.none()
@@ -27,6 +31,7 @@ class CourseViewSet(viewsets.ModelViewSet):
 
 class LessonListCreateView(generics.ListCreateAPIView):
     serializer_class = LessonSerializer
+    pagination_class = StandardResultsSetPagination
     permission_classes = [ModeratorReadOnlyForCreationAndDeletion]
 
     def get_queryset(self):
@@ -54,7 +59,7 @@ class LessonDetailView(generics.RetrieveUpdateDestroyAPIView):
         return Lesson.objects.filter(owner=user)
 
 
-class ToggleSubscriptionView(APIView):
+class ToggleSubscriptionView(generics.GenericAPIView):
     def post(self, request, course_id):
         user = request.user
 
