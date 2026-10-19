@@ -55,3 +55,10 @@ class CourseDetailSerializer(CourseListSerializer):
 class ToggleSubscriptionResponseSerializer(serializers.Serializer):
     message = serializers.CharField()
     is_subscribed = serializers.BooleanField()
+
+class PaymentRequestSerializer(serializers.Serializer):
+    course_id = serializers.IntegerField()
+
+class PaymentResponseSerializer(serializers.Serializer):
+    session_id = serializers.CharField()
+    url = serializers.URLField()

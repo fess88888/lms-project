@@ -1,11 +1,21 @@
 from rest_framework import viewsets, generics, status
 from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
-from .models import Course, Lesson, Subscription
-from .serializers import CourseListSerializer, CourseDetailSerializer, LessonSerializer
+from .models import Course, Lesson, Subscription, Payment
+from .serializers import CourseListSerializer, CourseDetailSerializer, LessonSerializer, PaymentRequestSerializer, \
+    PaymentResponseSerializer
 from .paginators import StandardResultsSetPagination
 from .permissions import ModeratorReadOnlyForCreationAndDeletion, LessonOwnerOrModeratorReadOnly
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes, OpenApiResponse
+from rest_framework.generics import GenericAPIView
+from .serializers import PaymentRequestSerializer, PaymentResponseSerializer
+from .services import create_stripe_payment_session
+from rest_framework import generics, status
+from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
+from .models import Course, Subscription
+from .serializers import ToggleSubscriptionResponseSerializer
 
 
 class CourseViewSet(viewsets.ModelViewSet):
@@ -89,12 +99,6 @@ class LessonDetailView(generics.RetrieveUpdateDestroyAPIView):
             raise PermissionDenied('Вы не можете удалять уроки чужих курсов.')
         instance.delete()
 
-from rest_framework import generics, status
-from rest_framework.response import Response
-from django.shortcuts import get_object_or_404
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
-from .models import Course, Subscription
-from .serializers import ToggleSubscriptionResponseSerializer  # <-- важно
 
 @extend_schema(
     description="Переключение подписки на курс: создание или удаление подписки.",
@@ -149,3 +153,33 @@ class ToggleSubscriptionView(generics.GenericAPIView):
             {"message": message, "is_subscribed": is_subscribed},
             status=status_code
         )
+
+
+class CreatePaymentView(GenericAPIView):
+    serializer_class = PaymentRequestSerializer
+
+    @extend_schema(
+        request=PaymentRequestSerializer,
+        responses={
+            200: PaymentResponseSerializer,
+            400: OpenApiResponse(description="Ошибка валидации"),
+            401: OpenApiResponse(description="Требуется авторизация"),
+        },
+        description="Создать платёжную сессию Stripe для курса",
+    )
+    def post(self, request, *args, **kwargs):
+        # валидация входных данных через сериализатор
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        course_id = serializer.validated_data["course_id"]
+        user = request.user
+
+        try:
+            session_data = create_stripe_payment_session(course_id, user)
+            # session_data — это dict от Stripe (session_id, url и т. д.)
+            response_serializer = PaymentResponseSerializer(data=session_data)
+            response_serializer.is_valid()  # можно raise_exception=False и вернуть ошибки
+            return Response(response_serializer.data, status=status.HTTP_200_OK)
+        except stripe.error.StripeError as e:
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
