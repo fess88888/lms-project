@@ -1,21 +1,26 @@
-from rest_framework import viewsets, generics
-from .models import Course, Lesson
-from .serializers import CourseSerializer, LessonSerializer
-from .permissions import ModeratorReadOnlyForCreationAndDeletion
+from rest_framework import viewsets, generics, status
+from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
+from .models import Course, Lesson, Subscription
+from .serializers import CourseListSerializer, CourseDetailSerializer, LessonSerializer
+from .paginators import StandardResultsSetPagination
+from .permissions import ModeratorReadOnlyForCreationAndDeletion, LessonOwnerOrModeratorReadOnly
 
 
 class CourseViewSet(viewsets.ModelViewSet):
-    serializer_class = CourseSerializer
+    pagination_class = StandardResultsSetPagination  # <-- пагинация здесь
     permission_classes = [ModeratorReadOnlyForCreationAndDeletion]
 
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return CourseListSerializer
+        return CourseDetailSerializer
+
     def get_queryset(self):
-        # Возвращаем только курсы владельца ИЛИ все, если пользователь модератор
         user = self.request.user
         if not user.is_authenticated:
             return Course.objects.none()
-        if user.groups.filter(name='moderators').exists():
-            return Course.objects.all()
-        return Course.objects.filter(owner=user)
+        return Course.objects.all().order_by('id')
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
@@ -23,7 +28,8 @@ class CourseViewSet(viewsets.ModelViewSet):
 
 class LessonListCreateView(generics.ListCreateAPIView):
     serializer_class = LessonSerializer
-    permission_classes = [ModeratorReadOnlyForCreationAndDeletion]
+    pagination_class = StandardResultsSetPagination
+    permission_classes = [LessonOwnerOrModeratorReadOnly]  # <-- заменили permission
 
     def get_queryset(self):
         user = self.request.user
@@ -32,6 +38,33 @@ class LessonListCreateView(generics.ListCreateAPIView):
         if user.groups.filter(name='moderators').exists():
             return Lesson.objects.all()
         return Lesson.objects.filter(owner=user)
+
+    def create(self, request, *args, **kwargs):
+        """
+        Переопределяем create, чтобы проверить: владелец курса может создавать уроки.
+        """
+        course_id = request.data.get('course')
+        if not course_id:
+            return Response(
+                {'course': ['Это поле обязательно.']},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        course = get_object_or_404(Course, pk=course_id)
+        user = request.user
+
+        # Проверка: только владелец курса может создавать уроки
+        if course.owner != user:
+            return Response(
+                {'detail': 'Вы можете создавать уроки только для своих курсов.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
     def perform_create(self, serializer):
         serializer.save(owner=self.request.user)
@@ -39,13 +72,48 @@ class LessonListCreateView(generics.ListCreateAPIView):
 
 class LessonDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = LessonSerializer
-    permission_classes = [ModeratorReadOnlyForCreationAndDeletion]
+    permission_classes = [LessonOwnerOrModeratorReadOnly]  # <-- тоже меняем
 
     def get_queryset(self):
         user = self.request.user
         if not user.is_authenticated:
             return Lesson.objects.none()
-        if user.groups.filter(name='moderators').exists():
-            return Lesson.objects.all()
-        return Lesson.objects.filter(owner=user)
+        return Lesson.objects.all().order_by('id')
 
+    # Важно: для DELETE проверку владельца курса делаем здесь
+    def perform_destroy(self, instance):
+        user = self.request.user
+        if instance.course.owner != user:
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied('Вы не можете удалять уроки чужих курсов.')
+        instance.delete()
+
+
+class ToggleSubscriptionView(generics.GenericAPIView):
+    def post(self, request, course_id):
+        user = request.user
+
+        if not user.is_authenticated:
+            return Response(
+                {"message": "Требуется авторизация."},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        course = get_object_or_404(Course, pk=course_id)
+        subscription_qs = Subscription.objects.filter(user=user, course=course)
+
+        if subscription_qs.exists():
+            subscription_qs.delete()
+            message = "Подписка удалена"
+            is_subscribed = False
+            status_code = status.HTTP_200_OK
+        else:
+            Subscription.objects.create(user=user, course=course)
+            message = "Подписка добавлена"
+            is_subscribed = True
+            status_code = status.HTTP_201_CREATED
+
+        return Response(
+            {"message": message, "is_subscribed": is_subscribed},
+            status=status_code
+        )
