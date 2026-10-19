@@ -5,6 +5,7 @@ from .models import Course, Lesson, Subscription
 from .serializers import CourseListSerializer, CourseDetailSerializer, LessonSerializer
 from .paginators import StandardResultsSetPagination
 from .permissions import ModeratorReadOnlyForCreationAndDeletion, LessonOwnerOrModeratorReadOnly
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 
 
 class CourseViewSet(viewsets.ModelViewSet):
@@ -88,11 +89,42 @@ class LessonDetailView(generics.RetrieveUpdateDestroyAPIView):
             raise PermissionDenied('Вы не можете удалять уроки чужих курсов.')
         instance.delete()
 
+from rest_framework import generics, status
+from rest_framework.response import Response
+from django.shortcuts import get_object_or_404
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
+from .models import Course, Subscription
+from .serializers import ToggleSubscriptionResponseSerializer  # <-- важно
 
+@extend_schema(
+    description="Переключение подписки на курс: создание или удаление подписки.",
+    parameters=[
+        OpenApiParameter(
+            name="course_id",
+            description="ID курса, на который подписываемся/отписываемся",
+            required=True,
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.PATH,
+        )
+    ],
+    responses={
+        200: {"description": "Подписка удалена"},
+        201: {"description": "Подписка создана"},
+        401: {"description": "Требуется авторизация"},
+    },
+)
 class ToggleSubscriptionView(generics.GenericAPIView):
-    def post(self, request, course_id):
-        user = request.user
+    serializer_class = ToggleSubscriptionResponseSerializer  # <-- обязательно
 
+    def post(self, request, *args, **kwargs):
+        course_id = kwargs.get('course_id')
+        if not course_id:
+            return Response(
+                {"message": "course_id обязателен в URL."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user = request.user
         if not user.is_authenticated:
             return Response(
                 {"message": "Требуется авторизация."},
