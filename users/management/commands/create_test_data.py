@@ -1,8 +1,9 @@
-from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password
-from courses.models import Course, Lesson
+from django.core.management.base import BaseCommand
 from users.models import Payment
+
+from courses.models import Course, Lesson
 
 User = get_user_model()
 

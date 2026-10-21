@@ -1,5 +1,5 @@
-from django.db import models
 from django.conf import settings
+from django.db import models
 from users.models import User
 
 
@@ -79,7 +79,6 @@ class Payment(models.Model):
     stripe_product_id = models.CharField(max_length=255, blank=True, null=True)
     stripe_price_id = models.CharField(max_length=255, blank=True, null=True)
     stripe_session_id = models.CharField(max_length=255, blank=True, null=True)
-    stripe_payment_intent_id = models.CharField(max_length=255, blank=True, null=True)  # опционально
 
     status = models.CharField(
         max_length=20,

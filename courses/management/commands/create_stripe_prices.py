@@ -1,7 +1,9 @@
 import stripe
-from django.core.management.base import BaseCommand
 from django.conf import settings
+from django.core.management.base import BaseCommand
+
 from courses.models import Course
+
 
 class Command(BaseCommand):
     help = "Создаёт Stripe Price для всех курсов, у которых его ещё нет"

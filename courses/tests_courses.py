@@ -1,7 +1,8 @@
-from django.test import TestCase
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.test import TestCase
 from rest_framework.test import APIClient
+
 from .models import Course, Lesson, Subscription
 
 User = get_user_model()

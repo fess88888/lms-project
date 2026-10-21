@@ -1,8 +1,9 @@
 
-from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
-from .models import User, Payment
+from rest_framework import serializers
+
+from .models import Payment, User
 
 
 class PaymentSerializer(serializers.ModelSerializer):

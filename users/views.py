@@ -1,11 +1,13 @@
-from rest_framework import generics
-from django_filters.rest_framework import DjangoFilterBackend
 from django.contrib.auth import get_user_model
+from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework import generics
 from rest_framework.filters import OrderingFilter
-from .models import Payment
-from .serializers import PaymentSerializer
+
 from .filters import PaymentFilter
-from .serializers import UserRegistrationSerializer, UserProfileSerializer
+from .models import Payment
+from .serializers import (
+    PaymentSerializer, UserProfileSerializer, UserRegistrationSerializer,
+)
 
 User = get_user_model()
 

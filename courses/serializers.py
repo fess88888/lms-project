@@ -1,7 +1,8 @@
+from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
+
 from .models import Course, Lesson, Subscription
 from .validators import validate_youtube_link
-from drf_spectacular.utils import extend_schema_field
 
 
 class LessonSerializer(serializers.ModelSerializer):
@@ -24,11 +25,12 @@ class LessonSerializer(serializers.ModelSerializer):
 class CourseListSerializer(serializers.ModelSerializer):
     lessons_count = serializers.SerializerMethodField()
     is_subscribed = serializers.SerializerMethodField()
+    price = serializers.DecimalField(max_digits=10, decimal_places=2, required=True)
 
     class Meta:
         model = Course
         fields = [
-            'id', 'owner', 'title', 'preview', 'description',
+            'id', 'owner', 'price', 'title', 'preview', 'description',
             'lessons_count', 'is_subscribed', 'created_at', 'updated_at'
         ]
         read_only_fields = ['owner', 'created_at', 'updated_at']
@@ -62,3 +64,7 @@ class PaymentRequestSerializer(serializers.Serializer):
 class PaymentResponseSerializer(serializers.Serializer):
     session_id = serializers.CharField()
     url = serializers.URLField()
+    payment_id = serializers.CharField()
+    course_title = serializers.CharField()
+    amount = serializers.FloatField()
+    currency = serializers.CharField()
