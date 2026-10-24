@@ -1,10 +1,32 @@
-from rest_framework import viewsets, generics, status
+import logging
+
+import stripe
+from django.conf import settings
+from django.shortcuts import get_object_or_404, render
+from django.views.decorators.csrf import csrf_exempt
+from drf_spectacular.utils import (
+    OpenApiParameter, OpenApiResponse, OpenApiTypes, extend_schema,
+)
+from rest_framework import generics, status, viewsets
+from rest_framework.generics import GenericAPIView
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from django.shortcuts import get_object_or_404
-from .models import Course, Lesson, Subscription
-from .serializers import CourseListSerializer, CourseDetailSerializer, LessonSerializer
+from rest_framework.views import APIView
+
+from courses.models import Payment
+
+from .models import Course, Lesson, Payment, Subscription
 from .paginators import StandardResultsSetPagination
-from .permissions import ModeratorReadOnlyForCreationAndDeletion, LessonOwnerOrModeratorReadOnly
+from .permissions import (
+    LessonOwnerOrModeratorReadOnly, ModeratorReadOnlyForCreationAndDeletion,
+)
+from .serializers import (
+    CourseDetailSerializer, CourseListSerializer, LessonSerializer,
+    PaymentRequestSerializer, PaymentResponseSerializer,
+    ToggleSubscriptionResponseSerializer,
+)
+from .services import create_stripe_payment_session
+from .services.stripe_service import create_checkout_session
 
 
 class CourseViewSet(viewsets.ModelViewSet):
@@ -89,10 +111,35 @@ class LessonDetailView(generics.RetrieveUpdateDestroyAPIView):
         instance.delete()
 
 
+@extend_schema(
+    description="Переключение подписки на курс: создание или удаление подписки.",
+    parameters=[
+        OpenApiParameter(
+            name="course_id",
+            description="ID курса, на который подписываемся/отписываемся",
+            required=True,
+            type=OpenApiTypes.INT,
+            location=OpenApiParameter.PATH,
+        )
+    ],
+    responses={
+        200: {"description": "Подписка удалена"},
+        201: {"description": "Подписка создана"},
+        401: {"description": "Требуется авторизация"},
+    },
+)
 class ToggleSubscriptionView(generics.GenericAPIView):
-    def post(self, request, course_id):
-        user = request.user
+    serializer_class = ToggleSubscriptionResponseSerializer  # <-- обязательно
 
+    def post(self, request, *args, **kwargs):
+        course_id = kwargs.get('course_id')
+        if not course_id:
+            return Response(
+                {"message": "course_id обязателен в URL."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        user = request.user
         if not user.is_authenticated:
             return Response(
                 {"message": "Требуется авторизация."},
@@ -117,3 +164,143 @@ class ToggleSubscriptionView(generics.GenericAPIView):
             {"message": message, "is_subscribed": is_subscribed},
             status=status_code
         )
+
+
+logger = logging.getLogger(__name__)
+
+class CreatePaymentView(GenericAPIView):
+    serializer_class = PaymentRequestSerializer  # <-- это убирает предупреждение в логах
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        course_id = serializer.validated_data["course_id"]
+        course = get_object_or_404(Course, pk=course_id)
+
+        if course.price <= 0:
+            return Response(
+                {"detail": "Курс должен иметь положительную цену."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        success_url = getattr(
+            settings,
+            "STRIPE_SUCCESS_URL",
+            "http://127.0.0.1:8000/payment/success",
+        )
+        cancel_url = getattr(
+            settings,
+            "STRIPE_CANCEL_URL",
+            "http://127.0.0.1:8000/payment/cancel",
+        )
+
+        try:
+            session = create_checkout_session(course, request.user, success_url, cancel_url)
+
+            payment = Payment.objects.create(
+                user=request.user,
+                course=course,
+                stripe_session_id=session.id,
+                status="pending",
+                # amount/currency — только если они есть в модели Payment!
+            )
+
+            response_data = {
+                "session_id": session.id,
+                "url": session.url,
+                "payment_id": str(payment.id),
+                "course_title": course.title,
+                "amount": float(course.price),
+                "currency": "RUB",
+            }
+
+            response_serializer = PaymentResponseSerializer(data=response_data)
+            if not response_serializer.is_valid():
+                logger.warning("Serializer validation failed: %s", response_serializer.errors)
+                return Response(response_serializer.errors, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+            return Response(response_serializer.data, status=status.HTTP_200_OK)
+
+        except ValueError as e:
+            logger.warning("Validation/logic error during payment creation: %s", e)
+            return Response({"detail": str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        except Exception as e:
+            logger.exception("Stripe error or unexpected failure: %s", e)
+            return Response(
+                {"detail": "Ошибка платёжной системы. Попробуйте позже."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+class PaymentStatusView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, session_id):
+        stripe.api_key = settings.STRIPE_SECRET_KEY
+
+        try:
+            session = stripe.checkout.Session.retrieve(session_id)
+        except stripe.error.StripeError as e:
+            logger.exception("Stripe error while retrieving session: %s", e)
+            return Response(
+                {"detail": "Не удалось получить статус сессии от Stripe"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+        except Exception as e:
+            logger.exception("Unexpected error: %s", e)
+            return Response(
+                {"detail": "Недопустимый session_id"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        status_map = {
+            "paid": "paid",
+            "canceled": "canceled",
+            "expired": "expired",
+            "open": "pending",
+        }
+        mapped_status = status_map.get(session.payment_status, "pending")
+
+        Payment.objects.filter(stripe_session_id=session_id).update(status=mapped_status)
+
+        return Response({
+            "session_id": session_id,
+            "status": session.payment_status,
+            "mapped_status": mapped_status,
+            "mode": session.mode,
+            "url": session.url if session.mode == "payment" else None,
+        })
+
+
+@csrf_exempt
+def payment_success(request):
+    session_id = request.GET.get("session_id")
+
+    if not session_id:
+        return render(request, "payment/error.html", {"message": "Не передан session_id"})
+
+    # Важно: ищем по точному совпадению. Никаких { } в базе быть не должно!
+    payment = get_object_or_404(Payment, stripe_session_id=session_id)
+
+    if payment.status == "pending":
+        payment.status = "paid"
+        payment.save()
+
+    return render(
+        request,
+        "payment/success.html",
+        {
+            "payment_id": payment.id,
+            "course_title": payment.course.title,
+            "amount": payment.course.price,
+        },
+    )
+
+@csrf_exempt
+def payment_cancel(request):
+    return render(
+        request,
+        "payment/cancel.html",
+        {"message": "Оплата отменена. Вы можете вернуться к выбору курса."}
+    )

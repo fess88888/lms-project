@@ -1,15 +1,21 @@
-from pathlib import Path
-from datetime import timedelta
 import os
+from datetime import timedelta
+from pathlib import Path
+
+from dotenv import load_dotenv
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / ".env")
+
+STRIPE_SECRET_KEY = os.getenv('STRIPE_SECRET_KEY')
+STRIPE_PUBLISHABLE_KEY = os.getenv('STRIPE_PUBLISHABLE_KEY')
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-9s4uh_dg6#m)5nzn14@#jh&z@-%!82aw7iqyn_ab#!5a5r!f^1'
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'dev-key-for-local-only')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
@@ -27,6 +33,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'drf_spectacular',
     'django_filters',
     'users',
     'courses',
@@ -130,6 +137,20 @@ REST_FRAMEWORK = {
     'DEFAULT_FILTER_BACKENDS': [
         'django_filters.rest_framework.DjangoFilterBackend',
         'rest_framework.filters.OrderingFilter',
+    ],
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+BASE_URL = os.getenv("BASE_URL", "http://127.0.0.1:8000")
+STRIPE_SUCCESS_URL = f"{BASE_URL}/payment/success?session_id={{{{CHECKOUT_SESSION_ID}}}}"
+STRIPE_CANCEL_URL = f"{BASE_URL}/payment/cancel"
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'LMS API',
+    'DESCRIPTION': 'API для системы управления обучением (курсы, уроки, подписки, оплата).',
+    'VERSION': '1.0.0',
+    'SERVERS': [
+        {'url': BASE_URL},
     ],
 }
 
