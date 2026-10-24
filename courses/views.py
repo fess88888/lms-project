@@ -27,6 +27,7 @@ from .serializers import (
 )
 from .services import create_stripe_payment_session
 from .services.stripe_service import create_checkout_session
+from .tasks import notify_course_updated
 
 
 class CourseViewSet(viewsets.ModelViewSet):
@@ -85,6 +86,10 @@ class LessonListCreateView(generics.ListCreateAPIView):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
+
+        course = get_object_or_404(Course, pk=course_id)
+        notify_course_updated.delay(course.id)
+
         headers = self.get_success_headers(serializer.data)
         return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
 
@@ -94,7 +99,7 @@ class LessonListCreateView(generics.ListCreateAPIView):
 
 class LessonDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = LessonSerializer
-    permission_classes = [LessonOwnerOrModeratorReadOnly]  # <-- тоже меняем
+    permission_classes = [LessonOwnerOrModeratorReadOnly]
 
     def get_queryset(self):
         user = self.request.user
@@ -102,13 +107,13 @@ class LessonDetailView(generics.RetrieveUpdateDestroyAPIView):
             return Lesson.objects.none()
         return Lesson.objects.all().order_by('id')
 
-    # Важно: для DELETE проверку владельца курса делаем здесь
     def perform_destroy(self, instance):
         user = self.request.user
         if instance.course.owner != user:
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied('Вы не можете удалять уроки чужих курсов.')
         instance.delete()
+        notify_course_updated.delay(instance.course.id)
 
 
 @extend_schema(
@@ -280,7 +285,6 @@ def payment_success(request):
     if not session_id:
         return render(request, "payment/error.html", {"message": "Не передан session_id"})
 
-    # Важно: ищем по точному совпадению. Никаких { } в базе быть не должно!
     payment = get_object_or_404(Payment, stripe_session_id=session_id)
 
     if payment.status == "pending":
