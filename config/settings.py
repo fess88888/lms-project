@@ -164,3 +164,18 @@ AUTH_USER_MODEL = 'users.User'
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+CELERY_TIMEZONE = 'UTC'
+CELERY_ENABLE_UTC = True
+
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL')
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND')
+
+CELERY_BEAT_SCHEDULE = {
+
+    'deactivate_inactive_users': {
+        'task': 'users.tasks.deactivate_inactive_users',
+        'schedule': timedelta(days=1),
+        'args': (),
+    },
+}
