@@ -1,3 +1,5 @@
+import uuid
+
 from django.conf import settings
 from django.db import models
 from users.models import User
@@ -73,6 +75,7 @@ class Subscription(models.Model):
 
 
 class Payment(models.Model):
+    public_id = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
     course = models.ForeignKey('Course', on_delete=models.CASCADE)
 
@@ -90,4 +93,9 @@ class Payment(models.Model):
         default='pending'
     )
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['public_id']),
+        ]
 
