@@ -23,7 +23,7 @@ cd lms-project
 ```
 
 
-### 2. Как проверить
+### 2. Проверить
 
 1. **Запуск**: `docker compose up -d` — все контейнеры в статусе `healthy`.
 2. **Миграции**: `docker compose run --rm web python manage.py migrate` — `No migrations to apply` или успешное применение.
