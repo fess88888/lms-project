@@ -43,6 +43,7 @@ class LMSAPITests(TestCase):
             owner=self.owner,
             title="Test Course",
             description="Course description",
+            price=1000,
         )
 
         # Урок
