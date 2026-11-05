@@ -18,10 +18,11 @@ router.register(r"courses", CourseViewSet, basename="course")
 
 urlpatterns = [
     path(
-        "courses/<int:course_id>/toggle-subscription/",
+        "courses/<int:course_id>/subscribe/",
         ToggleSubscriptionView.as_view(),
-        name="course-toggle-subscription",
+        name="course-subscribe",
     ),
+
     path("", include(router.urls)),
     path("lessons/", LessonListCreateView.as_view(), name="lesson-list-create"),
     path("lessons/<int:pk>/", LessonDetailView.as_view(), name="lesson-detail"),
