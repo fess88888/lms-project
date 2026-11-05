@@ -6,9 +6,7 @@ from rest_framework.filters import OrderingFilter
 from .filters import PaymentFilter
 from .models import Payment
 from .serializers import (
-    PaymentSerializer,
-    UserProfileSerializer,
-    UserRegistrationSerializer,
+    PaymentSerializer, UserProfileSerializer, UserRegistrationSerializer,
 )
 
 User = get_user_model()

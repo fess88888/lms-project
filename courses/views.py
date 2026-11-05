@@ -14,15 +14,11 @@ from rest_framework.views import APIView
 from .models import Course, Lesson, Payment, Subscription
 from .paginators import StandardResultsSetPagination
 from .permissions import (
-    LessonOwnerOrModeratorReadOnly,
-    ModeratorReadOnlyForCreationAndDeletion,
+    LessonOwnerOrModeratorReadOnly, ModeratorReadOnlyForCreationAndDeletion,
 )
 from .serializers import (
-    CourseDetailSerializer,
-    CourseListSerializer,
-    LessonSerializer,
-    PaymentRequestSerializer,
-    PaymentResponseSerializer,
+    CourseDetailSerializer, CourseListSerializer, LessonSerializer,
+    PaymentRequestSerializer, PaymentResponseSerializer,
     ToggleSubscriptionResponseSerializer,
 )
 from .services.stripe_service import create_checkout_session
