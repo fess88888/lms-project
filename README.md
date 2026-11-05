@@ -29,3 +29,12 @@ cd lms-project
 2. **Миграции**: `docker compose run --rm web python manage.py migrate` — `No migrations to apply` или успешное применение.
 3. **Статика**: `docker compose run --rm web python manage.py collectstatic --noinput` — файлы собраны.
 4. **Суперпользователь**: `docker compose exec web python manage.py createsuperuser` — пользователь создан.
+
+## Тестирование с Celery
+
+При запуске тестов задачи Celery выполняются синхронно, без обращения к брокеру (Redis). Это нужно, чтобы тесты не падали из‑за отсутствия или недоступности Redis и чтобы результат был предсказуемым.
+
+### Как запускать тесты локально
+
+```powershell
+docker compose exec -e CELERY_TASK_ALWAYS_EAGER=true web python manage.py test courses -v 2
