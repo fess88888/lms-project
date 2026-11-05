@@ -10,16 +10,23 @@ class LessonSerializer(serializers.ModelSerializer):
         required=False,
         allow_blank=True,
         validators=[validate_youtube_link],
-        help_text="Разрешены только ссылки на YouTube (youtube.com)"
+        help_text="Разрешены только ссылки на YouTube (youtube.com)",
     )
 
     class Meta:
         model = Lesson
         fields = [
-            'id', 'owner', 'course', 'title', 'description',
-            'preview', 'video_url', 'created_at', 'updated_at'
+            "id",
+            "owner",
+            "course",
+            "title",
+            "description",
+            "preview",
+            "video_url",
+            "created_at",
+            "updated_at",
         ]
-        read_only_fields = ['owner', 'created_at', 'updated_at']
+        read_only_fields = ["owner", "created_at", "updated_at"]
 
 
 class CourseListSerializer(serializers.ModelSerializer):
@@ -30,18 +37,26 @@ class CourseListSerializer(serializers.ModelSerializer):
     class Meta:
         model = Course
         fields = [
-            'id', 'owner', 'price', 'title', 'preview', 'description',
-            'lessons_count', 'is_subscribed', 'created_at', 'updated_at'
+            "id",
+            "owner",
+            "price",
+            "title",
+            "preview",
+            "description",
+            "lessons_count",
+            "is_subscribed",
+            "created_at",
+            "updated_at",
         ]
-        read_only_fields = ['owner', 'created_at', 'updated_at']
+        read_only_fields = ["owner", "created_at", "updated_at"]
 
-    @extend_schema_field({'type': 'integer'})
+    @extend_schema_field({"type": "integer"})
     def get_lessons_count(self, obj):
         return obj.lessons.count()
 
-    @extend_schema_field({'type': 'boolean'})
+    @extend_schema_field({"type": "boolean"})
     def get_is_subscribed(self, obj):
-        request = self.context.get('request')
+        request = self.context.get("request")
         if not request or not request.user or not request.user.is_authenticated:
             return False
         return Subscription.objects.filter(user=request.user, course=obj).exists()
@@ -51,15 +66,17 @@ class CourseDetailSerializer(CourseListSerializer):
     lessons = LessonSerializer(many=True, read_only=True)
 
     class Meta(CourseListSerializer.Meta):
-        fields = CourseListSerializer.Meta.fields + ['lessons']
+        fields = CourseListSerializer.Meta.fields + ["lessons"]
 
 
 class ToggleSubscriptionResponseSerializer(serializers.Serializer):
     message = serializers.CharField()
     is_subscribed = serializers.BooleanField()
 
+
 class PaymentRequestSerializer(serializers.Serializer):
     course_id = serializers.IntegerField()
+
 
 class PaymentResponseSerializer(serializers.Serializer):
     session_id = serializers.CharField()

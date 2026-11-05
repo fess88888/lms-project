@@ -7,40 +7,88 @@ class Migration(migrations.Migration):
 
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='Course',
+            name="Course",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('title', models.CharField(max_length=200, verbose_name='название')),
-                ('preview', models.ImageField(blank=True, null=True, upload_to='course_previews/', verbose_name='превью')),
-                ('description', models.TextField(blank=True, verbose_name='описание')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='создан')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='обновлён')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("title", models.CharField(max_length=200, verbose_name="название")),
+                (
+                    "preview",
+                    models.ImageField(
+                        blank=True,
+                        null=True,
+                        upload_to="course_previews/",
+                        verbose_name="превью",
+                    ),
+                ),
+                ("description", models.TextField(blank=True, verbose_name="описание")),
+                (
+                    "created_at",
+                    models.DateTimeField(auto_now_add=True, verbose_name="создан"),
+                ),
+                (
+                    "updated_at",
+                    models.DateTimeField(auto_now=True, verbose_name="обновлён"),
+                ),
             ],
             options={
-                'verbose_name': 'курс',
-                'verbose_name_plural': 'курсы',
+                "verbose_name": "курс",
+                "verbose_name_plural": "курсы",
             },
         ),
         migrations.CreateModel(
-            name='Lesson',
+            name="Lesson",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('title', models.CharField(max_length=200, verbose_name='название')),
-                ('description', models.TextField(blank=True, verbose_name='описание')),
-                ('preview', models.ImageField(blank=True, null=True, upload_to='lesson_previews/', verbose_name='превью')),
-                ('video_url', models.URLField(blank=True, max_length=500, verbose_name='ссылка на видео')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='создан')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='обновлён')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("title", models.CharField(max_length=200, verbose_name="название")),
+                ("description", models.TextField(blank=True, verbose_name="описание")),
+                (
+                    "preview",
+                    models.ImageField(
+                        blank=True,
+                        null=True,
+                        upload_to="lesson_previews/",
+                        verbose_name="превью",
+                    ),
+                ),
+                (
+                    "video_url",
+                    models.URLField(
+                        blank=True, max_length=500, verbose_name="ссылка на видео"
+                    ),
+                ),
+                (
+                    "created_at",
+                    models.DateTimeField(auto_now_add=True, verbose_name="создан"),
+                ),
+                (
+                    "updated_at",
+                    models.DateTimeField(auto_now=True, verbose_name="обновлён"),
+                ),
             ],
             options={
-                'verbose_name': 'урок',
-                'verbose_name_plural': 'уроки',
-                'ordering': ['created_at'],
+                "verbose_name": "урок",
+                "verbose_name_plural": "уроки",
+                "ordering": ["created_at"],
             },
         ),
     ]

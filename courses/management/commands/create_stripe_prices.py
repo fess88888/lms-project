@@ -14,7 +14,9 @@ class Command(BaseCommand):
 
         for course in Course.objects.all():
             if course.stripe_price_id:
-                self.stdout.write(f"Курс '{course.title}' уже имеет price_id: {course.stripe_price_id}")
+                self.stdout.write(
+                    f"Курс '{course.title}' уже имеет price_id: {course.stripe_price_id}"
+                )
                 continue
 
             # Создаём продукт
@@ -24,11 +26,11 @@ class Command(BaseCommand):
             price = stripe.Price.create(
                 product=product.id,
                 unit_amount=amount_cents,
-                currency='rub',
+                currency="rub",
             )
 
             course.stripe_price_id = price.id
-            course.save(update_fields=['stripe_price_id'])
+            course.save(update_fields=["stripe_price_id"])
             self.stdout.write(
                 self.style.SUCCESS(f"Создано: '{course.title}' -> price_id={price.id}")
             )

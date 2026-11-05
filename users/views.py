@@ -17,8 +17,8 @@ class PaymentListView(generics.ListAPIView):
     serializer_class = PaymentSerializer
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_class = PaymentFilter
-    ordering_fields = ['payment_date', 'amount']
-    ordering = ['-payment_date']
+    ordering_fields = ["payment_date", "amount"]
+    ordering = ["-payment_date"]
 
 
 class RegisterView(generics.CreateAPIView):
@@ -32,6 +32,7 @@ class RegisterView(generics.CreateAPIView):
 class UserListView(generics.ListCreateAPIView):
     queryset = User.objects.all()
     serializer_class = UserProfileSerializer
+
 
 class UserDetailView(generics.RetrieveUpdateDestroyAPIView):
     queryset = User.objects.all()

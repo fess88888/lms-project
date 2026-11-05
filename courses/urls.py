@@ -7,15 +7,20 @@ from .views import (
 )
 
 router = DefaultRouter()
-router.register(r'courses', CourseViewSet, basename='course')
+router.register(r"courses", CourseViewSet, basename="course")
 
 
 urlpatterns = [
-    path('courses/<int:course_id>/toggle-subscription/', ToggleSubscriptionView.as_view(), name='course-toggle-subscription'),
-    path('', include(router.urls)),
-    path('lessons/', LessonListCreateView.as_view(), name='lesson-list-create'),
-    path('lessons/<int:pk>/', LessonDetailView.as_view(), name='lesson-detail'),
-    path('payments/', CreatePaymentView.as_view(), name='payment-create'),
+    path(
+        "courses/<int:course_id>/subscribe/",
+        ToggleSubscriptionView.as_view(),
+        name="course-subscribe",
+    ),
+
+    path("", include(router.urls)),
+    path("lessons/", LessonListCreateView.as_view(), name="lesson-list-create"),
+    path("lessons/<int:pk>/", LessonDetailView.as_view(), name="lesson-detail"),
+    path("payments/", CreatePaymentView.as_view(), name="payment-create"),
     path(
         "payments/<str:session_id>/status/",
         PaymentStatusView.as_view(),
