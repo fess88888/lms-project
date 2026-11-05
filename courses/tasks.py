@@ -1,8 +1,10 @@
-from celery import shared_task
-from django.utils import timezone
-from courses.models import Course, Subscription
-from django.core.mail import send_mail
 from django.conf import settings
+from django.core.mail import send_mail
+from django.utils import timezone
+
+from celery import shared_task
+from courses.models import Course, Subscription
+
 
 @shared_task
 def notify_course_updated(course_id):
@@ -22,18 +24,17 @@ def notify_course_updated(course_id):
         return
 
     subscribers = Subscription.objects.filter(
-        course=course,
-        is_active=True
-    ).select_related('user')
+        course=course, is_active=True
+    ).select_related("user")
 
     emails = [sub.user.email for sub in subscribers if sub.user.email]
     if not emails:
         return
 
-    subject = f'Обновление курса: {course.title}'
+    subject = f"Обновление курса: {course.title}"
     message = (
         f'Курс "{course.title}" был обновлён.\n'
-        f'Заходите в LMS, чтобы посмотреть новые материалы.'
+        f"Заходите в LMS, чтобы посмотреть новые материалы."
     )
 
     send_mail(
